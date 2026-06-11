@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Trace Viewer</title>
+<meta name="description" content="Visualize agent tool-call traces as a flame graph. Drop in JSON from Anthropic or OpenAI traces, see step-by-step timing, token costs, and errors.">
+<style>
+:root {
+  --bg: #1c1c1f;
+  --panel: #26262a;
+  --panel-2: #2f2f34;
+  --ink: #e8e8ed;
+  --ink-soft: #8b8b94;
+  --rule: #3a3a40;
+  --accent: #a3e635;
+  --accent-soft: #2a3a16;
+  --warn: #facc15;
+  --err: #f87171;
+  --tool: #67e8f9;
+  --thinking: #c084fc;
+  --text: #a3e635;
+}
+[data-theme="light"] {
+  --bg: #fafafa;
+  --panel: #ffffff;
+  --panel-2: #f4f4f5;
+  --ink: #18181b;
+  --ink-soft: #71717a;
+  --rule: #e4e4e7;
+  --accent: #4d7c0f;
+  --accent-soft: #ecfccb;
+  --warn: #a16207;
+  --err: #b91c1c;
+  --tool: #0e7490;
+  --thinking: #7e22ce;
+  --text: #4d7c0f;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--ink); min-height: 100vh;
+  font-family: ui-monospace, 'SF Mono', 'JetBrains Mono', Consolas, monospace;
+  font-size: 14px; line-height: 1.5;
+}
+.wrap { max-width: 1400px; margin: 0 auto; padding: 28px 24px 64px; }
+header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; border-bottom: 1px solid var(--rule); margin-bottom: 24px; }
+h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+h1::before { content: "● "; color: var(--accent); }
+.theme-btn { background: var(--panel); border: 1px solid var(--rule); color: var(--ink); padding: 6px 12px; font-family: inherit; font-size: 12px; cursor: pointer; }
+.theme-btn:hover { background: var(--panel-2); }
+.tagline { color: var(--ink-soft); font-size: 13px; margin-bottom: 28px; }
+
+.input-area { background: var(--panel); border: 1px solid var(--rule); padding: 16px; margin-bottom: 24px; }
+.input-area label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); margin-bottom: 8px; }
+.input-controls { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.input-controls button { background: var(--panel-2); border: 1px solid var(--rule); color: var(--ink); padding: 6px 12px; font-family: inherit; font-size: 12px; cursor: pointer; }
+.input-controls button:hover { background: var(--rule); }
+.input-controls button.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+textarea { width: 100%; min-height: 160px; background: var(--bg); border: 1px solid var(--rule); color: var(--ink); padding: 12px; font-family: inherit; font-size: 13px; resize: vertical; line-height: 1.5; }
+textarea:focus { outline: 1px solid var(--accent); outline-offset: -1px; }
+
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.metric { background: var(--panel); border: 1px solid var(--rule); padding: 14px 16px; }
+.metric-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-soft); margin-bottom: 6px; }
+.metric-value { font-size: 22px; font-weight: 600; color: var(--accent); }
+.metric-sub { font-size: 11px; color: var(--ink-soft); margin-top: 4px; }
+
+.flamewrap { background: var(--panel); border: 1px solid var(--rule); padding: 20px; margin-bottom: 24px; overflow-x: auto; }
+.flame-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-soft); margin-bottom: 14px; }
+.flame { position: relative; min-height: 60px; }
+.flame-row { display: flex; align-items: stretch; margin-bottom: 4px; min-height: 28px; position: relative; }
+.flame-bar { padding: 4px 10px; font-size: 12px; color: var(--bg); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; transition: filter 0.15s; }
+.flame-bar:hover { filter: brightness(1.15); }
+.flame-bar.text { background: var(--text); }
+.flame-bar.tool { background: var(--tool); }
+.flame-bar.thinking { background: var(--thinking); }
+.flame-bar.error { background: var(--err); }
+.flame-axis { display: flex; justify-content: space-between; font-size: 10px; color: var(--ink-soft); margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--rule); }
+.legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 14px; font-size: 11px; }
+.legend-item { display: flex; align-items: center; gap: 6px; color: var(--ink-soft); }
+.legend-dot { width: 10px; height: 10px; display: inline-block; }
+
+.steps { background: var(--panel); border: 1px solid var(--rule); padding: 20px; }
+.steps-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-soft); margin-bottom: 14px; }
+.step { padding: 12px 16px; border-left: 3px solid var(--rule); margin-bottom: 10px; background: var(--panel-2); }
+.step.text { border-color: var(--text); }
+.step.tool { border-color: var(--tool); }
+.step.thinking { border-color: var(--thinking); }
+.step.error { border-color: var(--err); background: color-mix(in srgb, var(--err) 12%, var(--panel-2)); }
+.step-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.step-type { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; padding: 2px 8px; }
+.step-type.text { background: var(--accent-soft); color: var(--text); }
+.step-type.tool { background: color-mix(in srgb, var(--tool) 15%, transparent); color: var(--tool); }
+.step-type.thinking { background: color-mix(in srgb, var(--thinking) 15%, transparent); color: var(--thinking); }
+.step-type.error { background: color-mix(in srgb, var(--err) 18%, transparent); color: var(--err); }
+.step-meta { font-size: 11px; color: var(--ink-soft); }
+.step-content { font-size: 12px; color: var(--ink); white-space: pre-wrap; word-break: break-word; padding-top: 6px; max-height: 140px; overflow-y: auto; }
+.step-content code { background: var(--bg); padding: 1px 5px; border-radius: 2px; font-family: inherit; }
+
+.empty { background: var(--panel); border: 1px dashed var(--rule); padding: 40px; text-align: center; color: var(--ink-soft); font-size: 13px; }
+
+footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--ink-soft); }
+footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<a href="#main" style="position:absolute;left:-9999px" onfocus="this.style.left='8px';this.style.top='8px';this.style.zIndex='100'">Skip to content</a>
+<div class="wrap">
+  <header>
+    <h1>agent-trace-viewer</h1>
+    <button class="theme-btn" id="theme-toggle" aria-label="Toggle theme">[ theme ]</button>
+  </header>
+  <p class="tagline">Drop in trace JSON, get a flame graph. Anthropic and OpenAI tool-call traces, plus a generic schema.</p>
+
+  <main id="main">
+    <div class="input-area">
+      <label for="trace">Trace JSON</label>
+      <div class="input-controls">
+        <button id="sample-anthropic">Load sample (Anthropic)</button>
+        <button id="sample-openai">Load sample (OpenAI)</button>
+        <button id="clear-btn">Clear</button>
+        <button class="primary" id="parse-btn">Parse trace →</button>
+      </div>
+      <textarea id="trace" placeholder='Paste your trace JSON here. Supports:
+- Anthropic Messages API response (with content blocks)
+- OpenAI Chat Completions with tool_calls
+- Generic schema: { "steps": [{ "type": "text|tool|thinking|error", "name": "...", "duration_ms": 0, "tokens_in": 0, "tokens_out": 0, "content": "..." }] }'></textarea>
+    </div>
+
+    <div id="output">
+      <div class="empty">No trace loaded. Paste JSON above and click Parse, or try a sample.</div>
+    </div>
+  </main>
+
+  <footer>
+    Single HTML file. No upload. Trace data never leaves your browser. Costs estimated from token counts using Sonnet 4.6 rates ($3/M input, $15/M output) unless rates are provided in the trace.
+    <br>MIT licensed. <a href="https://github.com/0xelitesystem/agent-trace-viewer">Source on GitHub</a>.
+  </footer>
+</div>
+
+<script>
+const SAMPLE_ANTHROPIC = {
+  id: "msg_01abc",
+  model: "claude-sonnet-4-6",
+  usage: { input_tokens: 1240, output_tokens: 380 },
+  stop_reason: "end_turn",
+  content: [
+    { type: "thinking", thinking: "The user wants to know the weather and then create a calendar event. I should check the weather first, then schedule.", duration_ms: 850 },
+    { type: "tool_use", id: "tool_1", name: "get_weather", input: { location: "Lahore" }, duration_ms: 240 },
+    { type: "tool_result", tool_use_id: "tool_1", content: "Sunny, 31°C", duration_ms: 12 },
+    { type: "text", text: "It's sunny and 31°C in Lahore today. Now scheduling the event.", duration_ms: 320 },
+    { type: "tool_use", id: "tool_2", name: "create_calendar_event", input: { title: "Outdoor meeting", time: "16:00" }, duration_ms: 410 },
+    { type: "tool_result", tool_use_id: "tool_2", content: "Event created with id evt_8821", duration_ms: 25 },
+    { type: "text", text: "Done. The outdoor meeting is on your calendar for 4 PM.", duration_ms: 180 }
+  ]
+};
+
+const SAMPLE_OPENAI = {
+  id: "chatcmpl_01abc",
+  model: "gpt-4.1",
+  usage: { prompt_tokens: 980, completion_tokens: 290 },
+  choices: [{
+    message: {
+      role: "assistant",
+      content: null,
+      tool_calls: [
+        { id: "call_1", type: "function", function: { name: "search_database", arguments: '{"query": "Q3 revenue"}' }, duration_ms: 520 },
+        { id: "call_2", type: "function", function: { name: "format_report", arguments: '{"data": "..."}' }, duration_ms: 180 }
+      ]
+    },
+    finish_reason: "tool_calls"
+  }],
+  tool_results: [
+    { tool_call_id: "call_1", content: "Q3 revenue was $2.4M", duration_ms: 380 },
+    { tool_call_id: "call_2", content: "Report saved to /reports/q3.pdf", duration_ms: 95 }
+  ]
+};
+
+function normalizeTrace(raw) {
+  if (raw.steps && Array.isArray(raw.steps)) return raw;
+  if (raw.content && Array.isArray(raw.content)) {
+    const steps = [];
+    raw.content.forEach(block => {
+      if (block.type === 'thinking') {
+        steps.push({ type: 'thinking', name: 'thinking', duration_ms: block.duration_ms || 0, content: block.thinking || '' });
+      } else if (block.type === 'text') {
+        steps.push({ type: 'text', name: 'response', duration_ms: block.duration_ms || 0, tokens_out: Math.ceil((block.text || '').length / 4), content: block.text || '' });
+      } else if (block.type === 'tool_use') {
+        steps.push({ type: 'tool', name: block.name, duration_ms: block.duration_ms || 0, content: 'INPUT: ' + JSON.stringify(block.input || {}) });
+      } else if (block.type === 'tool_result') {
+        const last = steps[steps.length - 1];
+        if (last && last.type === 'tool') {
+          last.duration_ms = (last.duration_ms || 0) + (block.duration_ms || 0);
+          last.content += '\nRESULT: ' + (typeof block.content === 'string' ? block.content : JSON.stringify(block.content));
+        }
+      }
+    });
+    return { model: raw.model, usage: raw.usage, steps };
+  }
+  if (raw.choices && raw.choices[0] && raw.choices[0].message) {
+    const steps = [];
+    const msg = raw.choices[0].message;
+    if (msg.content) steps.push({ type: 'text', name: 'response', content: msg.content, duration_ms: 0 });
+    if (msg.tool_calls) {
+      msg.tool_calls.forEach(tc => {
+        const result = (raw.tool_results || []).find(r => r.tool_call_id === tc.id);
+        steps.push({
+          type: 'tool',
+          name: tc.function.name,
+          duration_ms: (tc.duration_ms || 0) + (result?.duration_ms || 0),
+          content: 'ARGS: ' + tc.function.arguments + (result ? '\nRESULT: ' + result.content : '')
+        });
+      });
+    }
+    return { model: raw.model, usage: raw.usage || { input_tokens: raw.usage?.prompt_tokens, output_tokens: raw.usage?.completion_tokens }, steps };
+  }
+  throw new Error('Unrecognized trace format. Expected Anthropic (content[]), OpenAI (choices[]), or generic ({ steps: [] }).');
+}
+
+function calcCost(input, output) {
+  return ((input || 0) / 1000000) * 3 + ((output || 0) / 1000000) * 15;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function fmt(n) { return n.toFixed(n < 1 ? 4 : 2); }
+
+function render(trace) {
+  const out = document.getElementById('output');
+  const totalDur = trace.steps.reduce((sum, s) => sum + (s.duration_ms || 0), 0);
+  const usage = trace.usage || {};
+  const inputTok = usage.input_tokens || usage.prompt_tokens || 0;
+  const outputTok = usage.output_tokens || usage.completion_tokens || 0;
+  const cost = calcCost(inputTok, outputTok);
+  const toolCount = trace.steps.filter(s => s.type === 'tool').length;
+  const errorCount = trace.steps.filter(s => s.type === 'error').length;
+
+  let html = `<div class="metrics">
+    <div class="metric"><div class="metric-label">Total duration</div><div class="metric-value">${totalDur}ms</div><div class="metric-sub">across ${trace.steps.length} steps</div></div>
+    <div class="metric"><div class="metric-label">Tool calls</div><div class="metric-value">${toolCount}</div><div class="metric-sub">${errorCount} error${errorCount !== 1 ? 's' : ''}</div></div>
+    <div class="metric"><div class="metric-label">Tokens in / out</div><div class="metric-value">${inputTok}<span style="font-size:14px;color:var(--ink-soft)"> / ${outputTok}</span></div><div class="metric-sub">model: ${trace.model || 'unknown'}</div></div>
+    <div class="metric"><div class="metric-label">Est. cost</div><div class="metric-value">$${fmt(cost)}</div><div class="metric-sub">at Sonnet 4.6 rates</div></div>
+  </div>`;
+
+  if (totalDur > 0) {
+    html += `<div class="flamewrap">
+      <div class="flame-title">Step timeline · ${totalDur}ms total</div>
+      <div class="flame">${trace.steps.map(s => {
+        const w = ((s.duration_ms || 0) / totalDur) * 100;
+        const minW = Math.max(w, 0.5);
+        return `<div class="flame-row" title="${escapeHtml(s.name)} · ${s.duration_ms}ms">
+          <div class="flame-bar ${s.type}" style="width: ${minW}%; min-width: 80px">${escapeHtml(s.name)} · ${s.duration_ms}ms</div>
+        </div>`;
+      }).join('')}</div>
+      <div class="flame-axis"><span>0ms</span><span>${Math.round(totalDur / 4)}ms</span><span>${Math.round(totalDur / 2)}ms</span><span>${Math.round(totalDur * 3 / 4)}ms</span><span>${totalDur}ms</span></div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-dot" style="background:var(--text)"></span>text</div>
+        <div class="legend-item"><span class="legend-dot" style="background:var(--tool)"></span>tool call</div>
+        <div class="legend-item"><span class="legend-dot" style="background:var(--thinking)"></span>thinking</div>
+        <div class="legend-item"><span class="legend-dot" style="background:var(--err)"></span>error</div>
+      </div>
+    </div>`;
+  }
+
+  html += `<div class="steps">
+    <div class="steps-title">Step detail</div>
+    ${trace.steps.map((s, i) => `<div class="step ${s.type}">
+      <div class="step-header">
+        <span class="step-type ${s.type}">${s.type}</span>
+        <span class="step-meta">#${i + 1} · ${escapeHtml(s.name || '')} · ${s.duration_ms || 0}ms${s.tokens_in ? ' · ' + s.tokens_in + ' in' : ''}${s.tokens_out ? ' · ' + s.tokens_out + ' out' : ''}</span>
+      </div>
+      <div class="step-content">${escapeHtml(s.content || '(no content)')}</div>
+    </div>`).join('')}
+  </div>`;
+
+  out.innerHTML = html;
+}
+
+function parseTrace() {
+  const raw = document.getElementById('trace').value.trim();
+  if (!raw) {
+    document.getElementById('output').innerHTML = '<div class="empty">No trace loaded. Paste JSON above and click Parse, or try a sample.</div>';
+    return;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    const normalized = normalizeTrace(parsed);
+    render(normalized);
+  } catch (e) {
+    document.getElementById('output').innerHTML = `<div class="empty" style="color: var(--err)">Parse error: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+document.getElementById('parse-btn').addEventListener('click', parseTrace);
+document.getElementById('sample-anthropic').addEventListener('click', () => {
+  document.getElementById('trace').value = JSON.stringify(SAMPLE_ANTHROPIC, null, 2);
+  parseTrace();
+});
+document.getElementById('sample-openai').addEventListener('click', () => {
+  document.getElementById('trace').value = JSON.stringify(SAMPLE_OPENAI, null, 2);
+  parseTrace();
+});
+document.getElementById('clear-btn').addEventListener('click', () => {
+  document.getElementById('trace').value = '';
+  document.getElementById('output').innerHTML = '<div class="empty">No trace loaded. Paste JSON above and click Parse, or try a sample.</div>';
+});
+
+document.getElementById('theme-toggle').addEventListener('click', () => {
+  const c = document.documentElement.getAttribute('data-theme');
+  document.documentElement.setAttribute('data-theme', c === 'light' ? '' : 'light');
+});
+</script>
+</body>
+</html>
