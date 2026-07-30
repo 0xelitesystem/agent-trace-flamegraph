@@ -140,7 +140,7 @@ footer a { color: var(--accent); }
   </main>
 
   <footer>
-    Single HTML file. No upload. Trace data never leaves your browser. Costs estimated from token counts using Sonnet 4.6 rates ($3/M input, $15/M output) unless rates are provided in the trace.
+    Single HTML file. No upload. Trace data never leaves your browser. Costs estimated from token counts using Sonnet 4.6 rates ($3/M input, $15/M output). Rates in the trace are not read; treat other models as a rough comparison.
     <br>MIT licensed. <a href="https://github.com/0xelitesystem/agent-trace-viewer">Source on GitHub</a>.
   </footer>
 </div>
@@ -189,15 +189,15 @@ function normalizeTrace(raw) {
     const steps = [];
     raw.content.forEach(block => {
       if (block.type === 'thinking') {
-        steps.push({ type: 'thinking', name: 'thinking', duration_ms: block.duration_ms || 0, content: block.thinking || '' });
+        steps.push({ type: 'thinking', name: 'thinking', duration_ms: num(block.duration_ms), content: block.thinking || '' });
       } else if (block.type === 'text') {
-        steps.push({ type: 'text', name: 'response', duration_ms: block.duration_ms || 0, tokens_out: Math.ceil((block.text || '').length / 4), content: block.text || '' });
+        steps.push({ type: 'text', name: 'response', duration_ms: num(block.duration_ms), tokens_out: Math.ceil((block.text || '').length / 4), content: block.text || '' });
       } else if (block.type === 'tool_use') {
-        steps.push({ type: 'tool', name: block.name, duration_ms: block.duration_ms || 0, content: 'INPUT: ' + JSON.stringify(block.input || {}) });
+        steps.push({ type: 'tool', name: block.name, duration_ms: num(block.duration_ms), content: 'INPUT: ' + JSON.stringify(block.input || {}) });
       } else if (block.type === 'tool_result') {
         const last = steps[steps.length - 1];
         if (last && last.type === 'tool') {
-          last.duration_ms = (last.duration_ms || 0) + (block.duration_ms || 0);
+          last.duration_ms = num(last.duration_ms) + num(block.duration_ms);
           last.content += '\nRESULT: ' + (typeof block.content === 'string' ? block.content : JSON.stringify(block.content));
         }
       }
@@ -214,7 +214,7 @@ function normalizeTrace(raw) {
         steps.push({
           type: 'tool',
           name: tc.function.name,
-          duration_ms: (tc.duration_ms || 0) + (result?.duration_ms || 0),
+          duration_ms: num(tc.duration_ms) + num(result?.duration_ms),
           content: 'ARGS: ' + tc.function.arguments + (result ? '\nRESULT: ' + result.content : '')
         });
       });
@@ -229,14 +229,21 @@ function calcCost(input, output) {
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/* Trace fields are untrusted: coerce anything used as a duration to a finite number. */
+function num(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
 }
 
 function fmt(n) { return n.toFixed(n < 1 ? 4 : 2); }
 
 function render(trace) {
   const out = document.getElementById('output');
-  const totalDur = trace.steps.reduce((sum, s) => sum + (s.duration_ms || 0), 0);
+  const totalDur = trace.steps.reduce((sum, s) => sum + num(s.duration_ms), 0);
   const usage = trace.usage || {};
   const inputTok = usage.input_tokens || usage.prompt_tokens || 0;
   const outputTok = usage.output_tokens || usage.completion_tokens || 0;
@@ -247,7 +254,7 @@ function render(trace) {
   let html = `<div class="metrics">
     <div class="metric"><div class="metric-label">Total duration</div><div class="metric-value">${totalDur}ms</div><div class="metric-sub">across ${trace.steps.length} steps</div></div>
     <div class="metric"><div class="metric-label">Tool calls</div><div class="metric-value">${toolCount}</div><div class="metric-sub">${errorCount} error${errorCount !== 1 ? 's' : ''}</div></div>
-    <div class="metric"><div class="metric-label">Tokens in / out</div><div class="metric-value">${inputTok}<span style="font-size:14px;color:var(--ink-soft)"> / ${outputTok}</span></div><div class="metric-sub">model: ${trace.model || 'unknown'}</div></div>
+    <div class="metric"><div class="metric-label">Tokens in / out</div><div class="metric-value">${escapeHtml(inputTok)}<span style="font-size:14px;color:var(--ink-soft)"> / ${escapeHtml(outputTok)}</span></div><div class="metric-sub">model: ${escapeHtml(trace.model || 'unknown')}</div></div>
     <div class="metric"><div class="metric-label">Est. cost</div><div class="metric-value">$${fmt(cost)}</div><div class="metric-sub">at Sonnet 4.6 rates</div></div>
   </div>`;
 
@@ -255,10 +262,11 @@ function render(trace) {
     html += `<div class="flamewrap">
       <div class="flame-title">Step timeline · ${totalDur}ms total</div>
       <div class="flame">${trace.steps.map(s => {
-        const w = ((s.duration_ms || 0) / totalDur) * 100;
+        const dur = num(s.duration_ms);
+        const w = (dur / totalDur) * 100;
         const minW = Math.max(w, 0.5);
-        return `<div class="flame-row" title="${escapeHtml(s.name)} · ${s.duration_ms}ms">
-          <div class="flame-bar ${s.type}" style="width: ${minW}%; min-width: 80px">${escapeHtml(s.name)} · ${s.duration_ms}ms</div>
+        return `<div class="flame-row" title="${escapeHtml(s.name)} · ${dur}ms">
+          <div class="flame-bar ${escapeHtml(s.type)}" style="width: ${minW}%; min-width: 80px">${escapeHtml(s.name)} · ${dur}ms</div>
         </div>`;
       }).join('')}</div>
       <div class="flame-axis"><span>0ms</span><span>${Math.round(totalDur / 4)}ms</span><span>${Math.round(totalDur / 2)}ms</span><span>${Math.round(totalDur * 3 / 4)}ms</span><span>${totalDur}ms</span></div>
@@ -273,10 +281,10 @@ function render(trace) {
 
   html += `<div class="steps">
     <div class="steps-title">Step detail</div>
-    ${trace.steps.map((s, i) => `<div class="step ${s.type}">
+    ${trace.steps.map((s, i) => `<div class="step ${escapeHtml(s.type)}">
       <div class="step-header">
-        <span class="step-type ${s.type}">${s.type}</span>
-        <span class="step-meta">#${i + 1} · ${escapeHtml(s.name || '')} · ${s.duration_ms || 0}ms${s.tokens_in ? ' · ' + s.tokens_in + ' in' : ''}${s.tokens_out ? ' · ' + s.tokens_out + ' out' : ''}</span>
+        <span class="step-type ${escapeHtml(s.type)}">${escapeHtml(s.type)}</span>
+        <span class="step-meta">#${i + 1} · ${escapeHtml(s.name || '')} · ${num(s.duration_ms)}ms${s.tokens_in ? ' · ' + escapeHtml(s.tokens_in) + ' in' : ''}${s.tokens_out ? ' · ' + escapeHtml(s.tokens_out) + ' out' : ''}</span>
       </div>
       <div class="step-content">${escapeHtml(s.content || '(no content)')}</div>
     </div>`).join('')}
