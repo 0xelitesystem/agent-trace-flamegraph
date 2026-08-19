@@ -50,7 +50,7 @@ body {
 .wrap { max-width: 1400px; margin: 0 auto; padding: 28px 24px 64px; }
 header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; border-bottom: 1px solid var(--rule); margin-bottom: 24px; }
 h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
-h1::before { content: "● "; color: var(--accent); }
+h1::before { content: "&bull; "; color: var(--accent); }
 .theme-btn { background: var(--panel); border: 1px solid var(--rule); color: var(--ink); padding: 6px 12px; font-family: inherit; font-size: 12px; cursor: pointer; }
 .theme-btn:hover { background: var(--panel-2); }
 .tagline { color: var(--ink-soft); font-size: 13px; margin-bottom: 28px; }
@@ -126,7 +126,7 @@ footer a { color: var(--accent); }
         <button id="sample-anthropic">Load sample (Anthropic)</button>
         <button id="sample-openai">Load sample (OpenAI)</button>
         <button id="clear-btn">Clear</button>
-        <button class="primary" id="parse-btn">Parse trace →</button>
+        <button class="primary" id="parse-btn">Parse trace -></button>
       </div>
       <textarea id="trace" placeholder='Paste your trace JSON here. Supports:
 - Anthropic Messages API response (with content blocks)
@@ -154,8 +154,8 @@ const SAMPLE_ANTHROPIC = {
   content: [
     { type: "thinking", thinking: "The user wants to know the weather and then create a calendar event. I should check the weather first, then schedule.", duration_ms: 850 },
     { type: "tool_use", id: "tool_1", name: "get_weather", input: { location: "Lahore" }, duration_ms: 240 },
-    { type: "tool_result", tool_use_id: "tool_1", content: "Sunny, 31°C", duration_ms: 12 },
-    { type: "text", text: "It's sunny and 31°C in Lahore today. Now scheduling the event.", duration_ms: 320 },
+    { type: "tool_result", tool_use_id: "tool_1", content: "Sunny, 31&deg;C", duration_ms: 12 },
+    { type: "text", text: "It's sunny and 31&deg;C in Lahore today. Now scheduling the event.", duration_ms: 320 },
     { type: "tool_use", id: "tool_2", name: "create_calendar_event", input: { title: "Outdoor meeting", time: "16:00" }, duration_ms: 410 },
     { type: "tool_result", tool_use_id: "tool_2", content: "Event created with id evt_8821", duration_ms: 25 },
     { type: "text", text: "Done. The outdoor meeting is on your calendar for 4 PM.", duration_ms: 180 }
@@ -260,13 +260,13 @@ function render(trace) {
 
   if (totalDur > 0) {
     html += `<div class="flamewrap">
-      <div class="flame-title">Step timeline · ${totalDur}ms total</div>
+      <div class="flame-title">Step timeline &middot; ${totalDur}ms total</div>
       <div class="flame">${trace.steps.map(s => {
         const dur = num(s.duration_ms);
         const w = (dur / totalDur) * 100;
         const minW = Math.max(w, 0.5);
-        return `<div class="flame-row" title="${escapeHtml(s.name)} · ${dur}ms">
-          <div class="flame-bar ${escapeHtml(s.type)}" style="width: ${minW}%; min-width: 80px">${escapeHtml(s.name)} · ${dur}ms</div>
+        return `<div class="flame-row" title="${escapeHtml(s.name)} &middot; ${dur}ms">
+          <div class="flame-bar ${escapeHtml(s.type)}" style="width: ${minW}%; min-width: 80px">${escapeHtml(s.name)} &middot; ${dur}ms</div>
         </div>`;
       }).join('')}</div>
       <div class="flame-axis"><span>0ms</span><span>${Math.round(totalDur / 4)}ms</span><span>${Math.round(totalDur / 2)}ms</span><span>${Math.round(totalDur * 3 / 4)}ms</span><span>${totalDur}ms</span></div>
@@ -284,7 +284,7 @@ function render(trace) {
     ${trace.steps.map((s, i) => `<div class="step ${escapeHtml(s.type)}">
       <div class="step-header">
         <span class="step-type ${escapeHtml(s.type)}">${escapeHtml(s.type)}</span>
-        <span class="step-meta">#${i + 1} · ${escapeHtml(s.name || '')} · ${num(s.duration_ms)}ms${s.tokens_in ? ' · ' + escapeHtml(s.tokens_in) + ' in' : ''}${s.tokens_out ? ' · ' + escapeHtml(s.tokens_out) + ' out' : ''}</span>
+        <span class="step-meta">#${i + 1} &middot; ${escapeHtml(s.name || '')} &middot; ${num(s.duration_ms)}ms${s.tokens_in ? ' &middot; ' + escapeHtml(s.tokens_in) + ' in' : ''}${s.tokens_out ? ' &middot; ' + escapeHtml(s.tokens_out) + ' out' : ''}</span>
       </div>
       <div class="step-content">${escapeHtml(s.content || '(no content)')}</div>
     </div>`).join('')}
