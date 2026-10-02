@@ -6,6 +6,12 @@ Visualize agent tool-call traces as a flame graph. Drop in JSON from an Anthropi
 
 Browser-only, single HTML file.
 
+## Use
+
+1. Paste trace JSON (Anthropic Messages, OpenAI Chat Completions, or the generic steps schema below) into the Trace JSON box, or click Load sample (Anthropic) or Load sample (OpenAI).
+2. Click Parse trace.
+3. Read the headline metrics, the flame graph and the step detail list to see where time and tokens went.
+
 ## What it does
 
 Paste a trace, get:
@@ -47,7 +53,16 @@ Default rates are Anthropic Sonnet 4.6 ($3/M input, $15/M output). If your trace
 
 ## Privacy
 
-The trace JSON you paste never leaves your browser. No requests are made. The HTML file has no external scripts, fonts, or analytics. You can verify by viewing source or running it offline.
+The trace JSON you paste never leaves your browser. No requests are made. The HTML file has no external scripts, fonts, or analytics. You can verify by viewing source or running it offline. The only thing the page stores is your light or dark theme choice, in localStorage under the key `theme`.
+
+## Run locally
+
+```
+git clone https://github.com/0xelitesystem/agent-trace-viewer
+cd agent-trace-viewer
+```
+
+Open `index.html` in any modern browser, or serve the folder with `python -m http.server 8000` and visit http://localhost:8000/.
 
 ## Build
 
