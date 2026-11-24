@@ -1,8 +1,8 @@
-# agent-trace-viewer
+# agent-trace-flamegraph
 
 Visualize agent tool-call traces as a flame graph. Drop in JSON from an Anthropic or OpenAI trace and see what your agent actually did.
 
-**Live demo:** https://0xelitesystem.github.io/agent-trace-viewer/
+**Live demo:** https://0xelitesystem.github.io/agent-trace-flamegraph/
 
 Browser-only, single HTML file.
 
@@ -45,11 +45,11 @@ The big observability platforms (LangSmith, Honeycomb, Phoenix) handle this well
 
 ## What's not in the trace
 
-This is a viewer, not an evaluator. It will not tell you whether the agent's answer was correct, whether a tool returned hallucinated data, or whether the system prompt held up under adversarial input. For those questions, see [rag-evaluation-rubrics](https://github.com/0xelitesystem/rag-evaluation-rubrics) and [agent-failure-modes](https://github.com/0xelitesystem/agent-failure-modes).
+This is a viewer, not an evaluator. It will not tell you whether the agent's answer was correct, whether a tool returned hallucinated data, or whether the system prompt held up under adversarial input. For those questions, see [rag-evaluation-rubrics](https://github.com/0xelitesystem/rag-evaluation-rubrics) and [agent-failure-signals](https://github.com/0xelitesystem/agent-failure-signals).
 
 ## Cost estimates
 
-Default rates are Anthropic Sonnet 4.6 ($3/M input, $15/M output). If your trace includes a different model with different costs, the headline cost is a rough comparison only. For accurate pricing across providers, see [llm-pricing-data](https://github.com/0xelitesystem/llm-pricing-data).
+Default rates are Anthropic Sonnet 4.6 ($3/M input, $15/M output). If your trace includes a different model with different costs, the headline cost is a rough comparison only. For accurate pricing across providers, see [llm-provider-price-json](https://github.com/0xelitesystem/llm-provider-price-json).
 
 ## Privacy
 
@@ -58,8 +58,8 @@ The trace JSON you paste never leaves your browser. No requests are made. The HT
 ## Run locally
 
 ```
-git clone https://github.com/0xelitesystem/agent-trace-viewer
-cd agent-trace-viewer
+git clone https://github.com/0xelitesystem/agent-trace-flamegraph
+cd agent-trace-flamegraph
 ```
 
 Open `index.html` in any modern browser, or serve the folder with `python -m http.server 8000` and visit http://localhost:8000/.
@@ -78,7 +78,7 @@ MIT.
 
 ## Related
 
-- [agent-failure-modes](https://github.com/0xelitesystem/agent-failure-modes): catalog of production agent failures
-- [agentic-workflow-patterns](https://github.com/0xelitesystem/agentic-workflow-patterns): design patterns
-- [llm-pricing-data](https://github.com/0xelitesystem/llm-pricing-data): current pricing across providers
-- [prompt-cost-calculator](https://github.com/0xelitesystem/prompt-cost-calculator): pre-flight cost estimation
+- [agent-failure-signals](https://github.com/0xelitesystem/agent-failure-signals): catalog of production agent failures
+- [coding-agent-work-patterns](https://github.com/0xelitesystem/coding-agent-work-patterns): design patterns
+- [llm-provider-price-json](https://github.com/0xelitesystem/llm-provider-price-json): current pricing across providers
+- [prompt-cost-across-models](https://github.com/0xelitesystem/prompt-cost-across-models): pre-flight cost estimation

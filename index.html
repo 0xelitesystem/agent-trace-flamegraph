@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Agent Trace Viewer - visualize agent tool-call traces as a flame graph</title>
-<meta property="og:title" content="Agent Trace Viewer">
-<meta property="og:description" content="agent-trace-viewer">
-<meta property="og:url" content="https://0xelitesystem.github.io/agent-trace-viewer/">
+<title>Agent Trace Flamegraph - visualize agent tool-call traces as a flame graph</title>
+<meta property="og:title" content="Agent Trace Flamegraph">
+<meta property="og:description" content="agent-trace-flamegraph">
+<meta property="og:url" content="https://0xelitesystem.github.io/agent-trace-flamegraph/">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
 <meta name="description" content="Visualize agent tool-call traces as a flame graph. Drop in JSON from Anthropic or OpenAI traces, see step-by-step timing, token costs, and errors.">
@@ -107,8 +107,8 @@ textarea:focus { outline: 1px solid var(--accent); outline-offset: -1px; }
 footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--ink-soft); }
 footer a { color: var(--accent); }
 </style>
-<link rel="canonical" href="https://0xelitesystem.github.io/agent-trace-viewer/">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Agent Trace Viewer","applicationCategory":"DeveloperApplication","operatingSystem":"Any (browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://0xelitesystem.github.io/agent-trace-viewer/","author":{"@type":"Person","name":"0xelitesystem","url":"https://elitesystem.ai"}}</script>
+<link rel="canonical" href="https://0xelitesystem.github.io/agent-trace-flamegraph/">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Agent Trace Flamegraph","applicationCategory":"DeveloperApplication","operatingSystem":"Any (browser)","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://0xelitesystem.github.io/agent-trace-flamegraph/","author":{"@type":"Person","name":"0xelitesystem","url":"https://elitesystem.ai"}}</script>
 <style>
 /* elitesystem brand tokens: chrome only, meaning preserved */
 :root, :root[data-theme="dark"] {
@@ -145,7 +145,7 @@ footer a { color: var(--accent); }
 <a href="#main" style="position:absolute;left:-9999px" onfocus="this.style.left='8px';this.style.top='8px';this.style.zIndex='100'">Skip to content</a>
 <div class="wrap">
   <header>
-    <h1>agent-trace-viewer</h1>
+    <h1>agent-trace-flamegraph</h1>
     <button class="theme-btn" id="theme-toggle" aria-label="Toggle theme">[ theme ]</button>
   </header>
   <p class="tagline">Drop in trace JSON, get a flame graph. Anthropic and OpenAI tool-call traces, plus a generic schema.</p>
@@ -172,7 +172,7 @@ footer a { color: var(--accent); }
 
   <footer>
     Single HTML file. No upload. Trace data never leaves your browser. Costs estimated from token counts using Sonnet 4.6 rates ($3/M input, $15/M output). Rates in the trace are not read; treat other models as a rough comparison.
-    <br>MIT licensed. <a href="https://github.com/0xelitesystem/agent-trace-viewer">Source on GitHub</a> &middot; <a href="https://elitesystem.ai" target="_blank" rel="noopener">An elitesystem.ai tool</a> &middot; <a href="https://0xelitesystem.github.io/" target="_blank" rel="noopener">More tools</a>.
+    <br>MIT licensed. <a href="https://github.com/0xelitesystem/agent-trace-flamegraph">Source on GitHub</a> &middot; <a href="https://elitesystem.ai" target="_blank" rel="noopener">An elitesystem.ai tool</a> &middot; <a href="https://0xelitesystem.github.io/" target="_blank" rel="noopener">More tools</a>.
   </footer>
 </div>
 
